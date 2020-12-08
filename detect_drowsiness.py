@@ -9,9 +9,12 @@ import imutils
 import time
 import dlib
 import cv2
+import simpleaudio as sa
 
 def sound_alarm(path):
-	playsound.playsound(path)
+	wave_obj = sa.WaveObject.from_wave_file(path)
+	play_obj = wave_obj.play()
+	play_obj.wait_done()
 
 def eye_aspect_ratio(eye):
 	A = dist.euclidean(eye[1], eye[5])
@@ -70,7 +73,7 @@ while True:
 
 					if args["alarm"] != "":
 						t = Thread(target=sound_alarm, args=(args["alarm"],))
-						t.deamon = True
+						t.daemon = True
 						t.start()
 
 				cv2.putText(frame, "DROWSINESS ALERT!!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
@@ -84,4 +87,3 @@ while True:
 
 cv2.destroyAllWindows()
 vs.stop()
-
