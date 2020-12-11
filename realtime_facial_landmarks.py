@@ -1,20 +1,15 @@
 #code tested on Ubuntu 18.04 environment
 from imutils.video import VideoStream
-import argparse
+from imutils import face_utils
 import imutils
 import time
 import dlib
 import cv2
 
-#specify file location for pre-trained landmark detector model used
-parser = argparse.ArgumentParser()
-parser.add_argument("-lp", "--landmark-predictor", required=True)
-args = vars(parser.parse_args())
-
 #dlib's pre-trained face detector library (based on HOG + SVM) 
 face_detector = dlib.get_frontal_face_detector()
 #dlib's pre-trained landmark keypoints predictor (based on gradient boosting)
-landmark_predictor = dlib.shape_predictor(args["landmark_predictor"])
+landmark_predictor = dlib.shape_predictor("./shape_predictor_68_face_landmarks.dat")
 
 #read video stream from webcam
 video = VideoStream(src=0).start()
@@ -35,6 +30,8 @@ while True:
 	for bounding_box in bounding_boxes:
 		#given a bounding box and current gray frame, dlib's shape_predictor method generates all landmark keypoints
 		landmark_points = landmark_predictor(gray_frame, bounding_box)
+		#convert to numpy array (making it iterable)
+		landmark_points = face_utils.shape_to_np(landmark_points)
 		#label each keypoint as red circle dots to be displayed in real time
 		for (x, y) in landmark_points:
 			# arguments - frame, keypoint_location, radius, color, thickness
