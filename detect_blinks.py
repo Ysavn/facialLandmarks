@@ -1,3 +1,4 @@
+#code tested on Ubuntu 18.04 environment
 from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
