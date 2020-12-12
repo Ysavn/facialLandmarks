@@ -57,7 +57,7 @@ while True:
 	for bounding_box in bounding_boxes:
 		#given a bounding box and current gray frame, dlib's shape_predictor method generates all landmark keypoints
 		landmark_points = landmark_predictor(gray_frame, bounding_box)
-		#convert to numpy array (making it iterable)
+		#convert to numpy array (allows indexing)
 		landmark_points = face_utils.shape_to_np(landmark_points)
 
 		#calculate eye aspect ratio for both eyes and average them out to reduce noise
@@ -69,6 +69,7 @@ while True:
 			if curr_count >= seq_frames: #implies a blink
 				total_blinks += 1
 			curr_count = 0 #reset the counter
+			
 		# arg: (frame, text, bottom left coordinate of text box, font, font scale factor, font color, font thickness)
 		cv2.putText(resized_frame, "Blinks: {}".format(total_blinks), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 

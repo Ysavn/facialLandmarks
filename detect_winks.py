@@ -2,8 +2,6 @@
 from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
-import datetime
-import argparse
 import imutils
 import time
 import dlib
@@ -62,7 +60,7 @@ while True:
 	for bounding_box in bounding_boxes:
 		#given a bounding box and current gray frame, dlib's shape_predictor method generates all landmark keypoints
 		landmark_points = landmark_predictor(gray_frame, bounding_box)
-		#convert to numpy array (making it iterable)
+		#convert to numpy array (allows indexing)
 		landmark_points = face_utils.shape_to_np(landmark_points)
 
 		#eye aspect ratio for left eye
@@ -70,20 +68,20 @@ while True:
 		#eye aspect ratio for right eye
 		right_ear = EAR(landmark_points[r_start:r_end])
 
-		if left_ear <= ear_threshold: 
+		if left_ear < ear_threshold: 
 			curr_count_left += 1
 		else:
 			if curr_count_left >= seq_frames: #implies a left eye wink
 				total_winks += 1
-			curr_count_left = 0
+			curr_count_left = 0 #reset the left eye counter
 
 		#do same for right eye
-		if right_ear <= ear_threshold:
+		if right_ear < ear_threshold:
 			curr_count_right += 1
 		else:
 			if curr_count_right >= seq_frames: #implies a right eye wink
 				total_winks += 1
-			curr_count_right = 0
+			curr_count_right = 0 #reset the right eye counter
 
 		# arg: (frame, text, bottom left coordinate of text box, font, font scale factor, font color, font thickness)
 		cv2.putText(resized_frame, "Winks: {}".format(total_winks), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
