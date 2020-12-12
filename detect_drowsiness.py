@@ -77,9 +77,9 @@ while True:
 			if curr_count >= seq_frames: #implies prolonged eyes closed, hence need to alert user for drowsiness
 				if not alert_on:
 					alert_on = True
-					t = Thread(target=alert_sound, args=()) #spawn a thread to generate alert sound in parallel
+					t = Thread(target=alert_sound, args=())
 					t.daemon = True #allows the thread to run in background
-					t.start()
+					t.start() #spawn a thread to generate alert sound in parallel
 
 				# arg: (frame, text, bottom left coordinate of text box, font, font scale factor, font color, font thickness)
 				cv2.putText(resized_frame, "DROWSINESS ALERT!!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
