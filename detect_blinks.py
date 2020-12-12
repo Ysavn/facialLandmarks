@@ -1,68 +1,78 @@
 from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
-import datetime
-import argparse
 import imutils
 import time
 import dlib
 import cv2
 
-def eye_aspect_ratio(eye):
-	A = dist.euclidean(eye[1], eye[5])
-	B = dist.euclidean(eye[2], eye[4])
-	C = dist.euclidean(eye[0], eye[3])
-	return (A + B) / (2.0 * C)
+#calculate eye aspect ratio (EAR)
+def EAR(eye_keypoints):
+	#calculate euclidean distance between first pair of keypoints along the width of eye
+	width1 = dist.euclidean(eye_keypoints[1], eye_keypoints[5])
+	#calculate euclidean distance between second pair of keypoints along the width of eye
+	width2 = dist.euclidean(eye_keypoints[2], eye_keypoints[4])
+	#calculate euclidean distance between the only pair of keypoints along the length of eye
+	length = dist.euclidean(eye_keypoints[0], eye_keypoints[3])
+	#calculating the aspect ratio (i.e. width/height)
+	#height multiplied by 2 here correponding to 2 estimates of width
+	return (width1 + width2) / (length * 2.0)
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--shape-predictor", required=True,
-	help="path to facial landmark predictor")
-args = vars(ap.parse_args())
+#EAR threshold
+ear_threshold = 0.18
+#Number of continuous frames with EAR below threshold => eye blink
+seq_frames = 3
 
-EYE_AR_THRESH = 0.18
-EYE_AR_CONSEC_FRAMES = 3
+#count of continuous frames with ear below threshold
+curr_count = 0
+#count of overall total number of blinks
+total_blinks = 0
 
-COUNTER = 0
-TOTAL = 0
+#dlib's pre-trained face detector library (based on HOG + SVM) 
+face_detector = dlib.get_frontal_face_detector()
+#dlib's pre-trained landmark keypoints predictor (based on gradient boosting)
+landmark_predictor = dlib.shape_predictor("./shape_predictor_68_face_landmarks.dat")
 
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(args["shape_predictor"])
+#getting start and end keypoint indexes from the facial landmarks map
+(l_start, l_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
+(r_start, r_end) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
 
-(lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-(rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-
-vs = VideoStream(src=0).start()
+#read video stream from webcam
+video = VideoStream(src=0).start()
 time.sleep(2.0)
 
+#indefinite loop
 while True:
-	frame = vs.read()
-	frame = imutils.resize(frame, width=400)
-	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-	
-	rects = detector(gray, 0)
+	#read the current frame
+	curr_frame = video.read()
+	#resize the frame to better detect face
+	resized_frame = imutils.resize(curr_frame, width=400)
+	#change to grayscale image (more efficient for face detection)
+	gray_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+	#generates all possible bounding boxes around human faces in the image (in my case only one)
+	bounding_boxes = face_detector(gray_frame, 0)
 
-	for rect in rects:
-		shape = predictor(gray, rect)
-		shape = face_utils.shape_to_np(shape)
+	#loop through all possible bounding box
+	for bounding_box in bounding_boxes:
+		#given a bounding box and current gray frame, dlib's shape_predictor method generates all landmark keypoints
+		landmark_points = landmark_predictor(gray_frame, bounding_box)
+		#convert to numpy array (making it iterable)
+		landmark_points = face_utils.shape_to_np(landmark_points)
 
-		leftEye = shape[lStart:lEnd]
-		rightEye = shape[rStart:rEnd]
-		leftEAR = eye_aspect_ratio(leftEye)
-		rightEAR = eye_aspect_ratio(rightEye)
+		#calculate eye aspect ratio for both eyes and average them out to reduce noise
+		avg_ear = (EAR(landmark_points[l_start:l_end]) + EAR(landmark_points[r_start:r_end]))/2.0
 
-		ear = (leftEAR + rightEAR) / 2.0
-
-		if ear < EYE_AR_THRESH:
-			COUNTER += 1
+		if avg_ear < ear_threshold:
+			curr_count += 1
 		else:
-			if COUNTER >= EYE_AR_CONSEC_FRAMES:
-				TOTAL += 1
-			COUNTER = 0
-		cv2.putText(frame, "Blinks: {}".format(TOTAL), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-		#cv2.putText(frame, "EAR: {:.2f}".format(ear), (300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+			if curr_count >= seq_frames: #implies a blink
+				total_blinks += 1
+			curr_count = 0 #reset the counter
+		# arg: (frame, text, bottom left coordinate of text box, font, font scale factor, font color, font thickness)
+		cv2.putText(resized_frame, "Blinks: {}".format(total_blinks), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-	cv2.imshow("Frame", frame)
-	key = cv2.waitKey(1) & 0xFF
+	cv2.imshow("Blink_Detection_Demo", resized_frame)
+	key = cv2.waitKey(1)
 
 cv2.destroyAllWindows()
 vs.stop()
